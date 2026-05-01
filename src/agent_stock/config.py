@@ -39,6 +39,10 @@ class Config:
         return os.getenv("LARK_APP_SECRET", "")
 
     @property
+    def lark_chat_id(self) -> str:
+        return os.getenv("LARK_CHAT_ID", "")
+
+    @property
     def serpapi_key(self) -> str:
         return os.getenv("SERPAPI_KEY", "")
 

@@ -60,9 +60,12 @@ class Orchestrator:
         )
         self.report_writer = ReportWriter()
         self.lark = None
-        if self.config.lark_webhook_url:
+        if self.config.lark_webhook_url or (self.config.lark_app_id and self.config.lark_app_secret):
             self.lark = LarkGateway(
                 webhook_url=self.config.lark_webhook_url,
+                app_id=self.config.lark_app_id,
+                app_secret=self.config.lark_app_secret,
+                chat_id=self.config.lark_chat_id,
                 timeout=self.config.get("lark.timeout", 10),
                 retry_count=self.config.get("lark.retry_count", 1),
             )
