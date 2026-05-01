@@ -18,6 +18,7 @@ def main() -> None:
     parser.add_argument("symbol", help="A股代码，如 000001")
     parser.add_argument("--config", "-c", default="config.yaml", help="配置文件路径")
     parser.add_argument("--debug", action="store_true", help="开启调试日志")
+    parser.add_argument("--test-mode", action="store_true", help="测试模式：AKShare 失败时使用合成 K 线数据")
     args = parser.parse_args()
 
     setup_logging(level=logging.DEBUG if args.debug else logging.INFO)
@@ -27,7 +28,7 @@ def main() -> None:
         logger.warning("LARK_WEBHOOK_URL 未设置，报告将仅保存到本地")
 
     async def _run():
-        orch = Orchestrator(config)
+        orch = Orchestrator(config, test_mode=args.test_mode)
         result = await orch.run(args.symbol)
         print(f"\n=== 分析完成 ===")
         print(f"股票: {result.symbol}")

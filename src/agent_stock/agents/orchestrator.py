@@ -12,6 +12,7 @@ from agent_stock.config import Config
 from agent_stock.models import (
     BranchResult,
     ImpactResult,
+    KLine,
     NewsList,
     StockData,
 )
@@ -36,8 +37,9 @@ class AnalysisResult:
 class Orchestrator:
     """并行调度器 — F2 新闻分支 + F5 技术分支，汇聚后生成报告."""
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(self, config: Config | None = None, test_mode: bool = False) -> None:
         self.config = config or Config()
+        self.test_mode = test_mode
         self.cache = CacheManager()
         self.data_fetcher = DataFetcher(
             cache=self.cache,
@@ -72,8 +74,12 @@ class Orchestrator:
         try:
             stock_data = await self.data_fetcher.fetch(symbol)
         except Exception as exc:
-            logger.error("Data fetch failed for %s: %s", symbol, exc)
-            raise
+            if self.test_mode:
+                logger.warning("AKShare failed in test mode, using synthetic data for %s", symbol)
+                stock_data = self._synthetic_stock_data(symbol)
+            else:
+                logger.error("Data fetch failed for %s: %s", symbol, exc)
+                raise
 
         # 2. 并行分支
         news_timeout = self.config.get("timeouts.news_branch", 30)
@@ -169,6 +175,35 @@ class Orchestrator:
 
     async def _tech_branch(self, stock_data: StockData, impact: ImpactResult | None) -> BranchResult:
         return await self.tech_analyst.analyze(stock_data, impact)
+
+    def _synthetic_stock_data(self, symbol: str) -> StockData:
+        """生成合成 K 线数据用于测试."""
+        from datetime import datetime, timedelta
+        import random
+
+        klines = []
+        base = datetime.now() - timedelta(days=120)
+        close = 10.0
+        for i in range(120):
+            date = base + timedelta(days=i)
+            close += (i % 7 - 3) * 0.05 + random.uniform(-0.1, 0.1)
+            close = max(1.0, close)
+            klines.append(
+                KLine(
+                    date=date.strftime("%Y-%m-%d"),
+                    open=round(close - 0.05, 2),
+                    high=round(close + 0.1, 2),
+                    low=round(close - 0.1, 2),
+                    close=round(close, 2),
+                    volume=int(100000 + i * 500 + random.randint(-10000, 10000)),
+                )
+            )
+        return StockData(
+            symbol=symbol,
+            name=f"测试-{symbol}",
+            period=f"{klines[0].date}~{klines[-1].date}",
+            klines=klines,
+        )
 
     def _save_local(self, report_md: str, symbol: str) -> None:
         from datetime import datetime

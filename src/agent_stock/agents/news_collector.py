@@ -8,12 +8,13 @@ from agent_stock.agents.base import BaseAnalyzer
 from agent_stock.models import BranchResult, NewsArticle, NewsList
 from agent_stock.modules.cache import CacheManager
 from agent_stock.modules.news_sources.eastmoney import EastmoneySource
+from agent_stock.modules.news_sources.kimi import KimiSource
 
 logger = logging.getLogger(__name__)
 
 
 class NewsCollector(BaseAnalyzer):
-    """新闻采集 Agent — 多源并行获取，合并去重."""
+    """新闻采集 Agent — 多源并行获取，合并去重，Eastmoney 失败时回退到 Kimi."""
 
     def __init__(
         self,
@@ -26,6 +27,7 @@ class NewsCollector(BaseAnalyzer):
         self.cache_ttl = cache_ttl
         self.max_articles = max_articles
         self.eastmoney = EastmoneySource()
+        self.kimi = KimiSource()
 
     async def analyze(self, symbol: str) -> BranchResult:
         cache_key = f"news:{symbol}"
@@ -37,11 +39,14 @@ class NewsCollector(BaseAnalyzer):
         self.logger.info("Collecting news for %s", symbol)
 
         try:
-            eastmoney_task = asyncio.create_task(self._fetch_eastmoney(symbol))
-            # TODO: 并行获取 SerpAPI/Tavily（后续实现）
-            eastmoney_articles = await eastmoney_task
-
+            eastmoney_articles = await self._fetch_eastmoney(symbol)
             all_articles = eastmoney_articles
+
+            # Eastmoney 失败时回退到 Kimi
+            if not all_articles:
+                self.logger.info("Eastmoney empty, falling back to Kimi for %s", symbol)
+                kimi_articles = await self.kimi.fetch(symbol, max_articles=self.max_articles)
+                all_articles = kimi_articles
 
             if not all_articles:
                 return self._err("所有新闻源均无数据")
