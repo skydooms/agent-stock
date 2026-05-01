@@ -1,0 +1,40 @@
+# 智投研 — F2+F5 配置
+
+# 数据源配置
+data:
+  kline_days: 120
+  cache_ttl_kline: 86400
+  cache_ttl_news: 14400
+
+# 新闻源配置
+news:
+  sources:
+    - eastmoney
+    - serpapi
+    - tavily
+  serpapi:
+    timeout: 15
+  tavily:
+    timeout: 15
+  eastmoney:
+    timeout: 10
+  max_articles: 20
+
+# 评分阈值
+scoring:
+  tech_weight: 0.7
+  news_weight: 0.3
+  buy_threshold: 80
+  hold_threshold: 50
+
+# Lark 推送
+lark:
+  webhook_url: ""
+  timeout: 10
+  retry_count: 1
+
+# 超时配置（秒）
+timeouts:
+  news_branch: 30
+  tech_branch: 60
+  total: 120
