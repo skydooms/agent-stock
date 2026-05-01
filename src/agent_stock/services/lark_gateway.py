@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,7 @@ class TokenInfo:
 
 
 class LarkGateway:
-    """飞书消息推送 — 支持 Webhook 和 App 模式."""
+    """飞书消息推送 — 支持 Webhook 和 App 模式（群聊 / 单聊）."""
 
     def __init__(
         self,
@@ -26,6 +27,9 @@ class LarkGateway:
         app_id: str = "",
         app_secret: str = "",
         chat_id: str = "",
+        user_email: str = "",
+        user_id: str = "",
+        open_id: str = "",
         timeout: int = 10,
         retry_count: int = 1,
     ) -> None:
@@ -33,6 +37,9 @@ class LarkGateway:
         self.app_id = app_id
         self.app_secret = app_secret
         self.chat_id = chat_id
+        self.user_email = user_email
+        self.user_id = user_id
+        self.open_id = open_id
         self.timeout = timeout
         self.retry_count = retry_count
         self._token_info: TokenInfo | None = None
@@ -41,9 +48,6 @@ class LarkGateway:
         if self.webhook_url:
             return await self._send_webhook(title, content)
         if self.app_id and self.app_secret:
-            if not self.chat_id:
-                logger.error("Lark App mode requires chat_id. Set LARK_CHAT_ID in .env")
-                return False
             return await self._send_app(title, content)
         logger.error("No Lark configuration available")
         return False
@@ -70,8 +74,28 @@ class LarkGateway:
         if not token:
             return False
 
+        # 确定接收者类型和 ID
+        if self.chat_id:
+            receive_id = self.chat_id
+            receive_id_type = "chat_id"
+        elif self.user_email:
+            receive_id = self.user_email
+            receive_id_type = "email"
+        elif self.user_id:
+            receive_id = self.user_id
+            receive_id_type = "user_id"
+        elif self.open_id:
+            receive_id = self.open_id
+            receive_id_type = "open_id"
+        else:
+            logger.error(
+                "Lark App mode requires receiver. Set one of: "
+                "LARK_CHAT_ID / LARK_USER_EMAIL / LARK_USER_ID / LARK_OPEN_ID in .env"
+            )
+            return False
+
         payload = {
-            "receive_id": self.chat_id,
+            "receive_id": receive_id,
             "content": json.dumps(
                 {
                     "config": {"wide_screen_mode": True},
@@ -93,11 +117,8 @@ class LarkGateway:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        return await self._post(
-            "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
-            payload,
-            headers=headers,
-        )
+        url = f"https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type={receive_id_type}"
+        return await self._post(url, payload, headers=headers)
 
     async def _ensure_token(self) -> str | None:
         if self._token_info and datetime.now(timezone.utc) < self._token_info.expire_at:

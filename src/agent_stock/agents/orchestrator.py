@@ -66,6 +66,9 @@ class Orchestrator:
                 app_id=self.config.lark_app_id,
                 app_secret=self.config.lark_app_secret,
                 chat_id=self.config.lark_chat_id,
+                user_email=self.config.lark_user_email,
+                user_id=self.config.lark_user_id,
+                open_id=self.config.lark_open_id,
                 timeout=self.config.get("lark.timeout", 10),
                 retry_count=self.config.get("lark.retry_count", 1),
             )

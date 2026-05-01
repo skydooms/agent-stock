@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config *)",
+      "Bash(git remote *)",
+      "Bash(~/.claude/skills/gstack/bin/gstack-learnings-log '{\"skill\":\"office-hours\",\"type\":\"pattern\",\"key\":\"agent-vs-module-boundary\",\"insight\":\"In multi-agent systems, agents should own orchestration/decisions while modules handle raw computation and serving. Web dashboards and backtest engines are services, not agents. This keeps the framework where it adds value.\",\"confidence\":8,\"source\":\"user-stated\",\"files\":[\"C:/Users/Administrator/.gstack/projects/agent-stock/skydooms-master-design-20260501-212050.md\"]}')",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(~/.claude/skills/gstack/bin/gstack-review-read)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(env)",
+      "Bash(python -c \"import anthropic; print\\(anthropic.__version__\\)\")",
+      "Bash(python *)",
+      "Bash(git reset *)"
+    ]
+  }
+}
