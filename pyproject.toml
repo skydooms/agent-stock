@@ -32,6 +32,7 @@ dev = [
 [project.scripts]
 agent-stock = "agent_stock.cli:main"
 agent-stock-web = "agent_stock.web_server:main"
+agent-stock-tunnel = "scripts.start_lark_tunnel:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_stock"]
