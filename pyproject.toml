@@ -18,6 +18,8 @@ dependencies = [
     "requests>=2.31.0",
     "aiohttp>=3.9.0",
     "pysenti>=0.1.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +31,7 @@ dev = [
 
 [project.scripts]
 agent-stock = "agent_stock.cli:main"
+agent-stock-web = "agent_stock.web_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_stock"]
