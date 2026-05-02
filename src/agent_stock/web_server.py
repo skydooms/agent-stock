@@ -96,6 +96,60 @@ async def _handle_command(cmd: dict):
 
         await _send_reply(reply_text, reply_to)
 
+    elif action == "industry":
+        industry = cmd["industry"]
+        try:
+            result = await orchestrator.run_industry(industry)
+            reply_text = (
+                f"**行业产业链分析 — {result.industry}**\n"
+                f"景气度: {result.sentiment_score}/100\n"
+                f"产业链节点: {result.node_count}, 覆盖股票: {result.stock_count}\n"
+                f"\n完整报告已推送，详见消息列表。"
+            )
+        except Exception as exc:
+            logger.error("Industry analysis failed for %s: %s", industry, exc)
+            available = ", ".join(orchestrator.list_industries()) if orchestrator else ""
+            if available:
+                reply_text = f"行业 {industry} 分析失败: {exc}\n可用行业: {available}"
+            else:
+                reply_text = f"行业 {industry} 分析失败: {exc}"
+
+        await _send_reply(reply_text, reply_to)
+
+    elif action == "market":
+        code = cmd["code"]
+        try:
+            result = await orchestrator.run_market(code)
+            reply_text = (
+                f"**大盘指数技术分析 — {result.name} ({result.symbol})**\n"
+                f"技术评分: {result.tech_score}/100\n"
+                f"操作建议: {result.recommendation}\n"
+                f"指标数: {result.indicator_count}\n"
+                f"\n完整报告已推送, 详见消息列表."
+            )
+        except Exception as exc:
+            logger.error("Market analysis failed for %s: %s", code, exc)
+            reply_text = f"大盘指数 {code} 分析失败: {exc}"
+
+        await _send_reply(reply_text, reply_to)
+
+    elif action == "etf":
+        code = cmd["code"]
+        try:
+            result = await orchestrator.run_etf(code)
+            reply_text = (
+                f"**ETF 技术分析 — {result.name} ({result.symbol})**\n"
+                f"技术评分: {result.tech_score}/100\n"
+                f"操作建议: {result.recommendation}\n"
+                f"指标数: {result.indicator_count}\n"
+                f"\n完整报告已推送, 详见消息列表."
+            )
+        except Exception as exc:
+            logger.error("ETF analysis failed for %s: %s", code, exc)
+            reply_text = f"ETF {code} 分析失败: {exc}"
+
+        await _send_reply(reply_text, reply_to)
+
     elif action == "reply":
         await _send_reply(cmd["message"], reply_to)
 

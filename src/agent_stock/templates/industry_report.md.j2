@@ -1,0 +1,35 @@
+# 🏭 行业系统性分析 — {{ analysis.industry }}
+
+{{ analysis.description }}
+
+**行业景气度：** {{ analysis.sentiment_score }} / 100
+**生成时间：** {{ analysis.generated_at }}
+
+---
+{% for node in analysis.nodes %}
+### {{ node.label }}
+
+**节点平均涨跌：** {{ "%+.2f"|format(node.avg_pct_change) }}%　|　{{ node.note }}
+
+| 代码 | 名称 | 涨跌幅 | 总市值（亿） |
+|------|------|--------|--------------|
+{%- for stock in node.stocks %}
+| {{ stock.symbol }} | {{ stock.name }} | {{ "%+.2f"|format(stock.pct_change) }}% | {{ "%.1f"|format(stock.market_cap) }} |
+{%- endfor %}
+
+{% endfor %}
+---
+
+### ⚠️ 风险提示
+
+{% if analysis.risk_notes %}
+{%- for risk in analysis.risk_notes %}
+- {{ risk }}
+{%- endfor %}
+{% else %}
+> 暂无标注风险提示。
+{% endif %}
+
+---
+
+*提示：行业链节点划分基于 `config/industry_chains.yaml`，可自行编辑扩展。*

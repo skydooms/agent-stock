@@ -4,6 +4,8 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
+from agent_stock.agents.industry_analyst import IndustryAnalyst
+from agent_stock.agents.market_tech import MarketTechAnalyst
 from agent_stock.agents.news_collector import NewsCollector
 from agent_stock.agents.news_impact import NewsImpactAnalyzer
 from agent_stock.agents.report_writer import ReportWriter
@@ -12,6 +14,7 @@ from agent_stock.config import Config
 from agent_stock.models import (
     BranchResult,
     ImpactResult,
+    IndustryAnalysis,
     KLine,
     NewsList,
     StockData,
@@ -31,6 +34,28 @@ class AnalysisResult:
     composite_score: int
     recommendation: str
     news_skipped: bool = False
+    lark_ok: bool = False
+
+
+@dataclass
+class IndustryAnalysisResult:
+    industry: str
+    report_md: str
+    sentiment_score: int
+    node_count: int
+    stock_count: int
+    lark_ok: bool = False
+
+
+@dataclass
+class MarketAnalysisResult:
+    symbol: str
+    name: str
+    kind: str  # "index" | "etf"
+    report_md: str
+    tech_score: int
+    recommendation: str
+    indicator_count: int
     lark_ok: bool = False
 
 
@@ -59,6 +84,15 @@ class Orchestrator:
             hold_threshold=self.config.get("scoring.hold_threshold", 50),
         )
         self.report_writer = ReportWriter()
+        self.industry_analyst = IndustryAnalyst(
+            chains_path=self.config.get(
+                "industry.chains_path", "config/industry_chains.yaml"
+            )
+        )
+        self.market_analyst = MarketTechAnalyst(
+            buy_threshold=self.config.get("market.buy_threshold", 75),
+            hold_threshold=self.config.get("market.hold_threshold", 50),
+        )
         self.lark = None
         if self.config.lark_webhook_url or (self.config.lark_app_id and self.config.lark_app_secret):
             self.lark = LarkGateway(
@@ -231,3 +265,115 @@ class Orchestrator:
             if delay_ms > 0:
                 await asyncio.sleep(delay_ms / 1000)
         return results
+
+    def list_industries(self) -> list[str]:
+        return self.industry_analyst.list_industries()
+
+    async def run_industry(self, industry: str) -> IndustryAnalysisResult:
+        logger.info("=== Starting industry analysis for %s ===", industry)
+        result = await self.industry_analyst.analyze(industry)
+        if not result.success or result.data is None:
+            raise RuntimeError(f"Industry analysis failed: {result.error}")
+
+        analysis: IndustryAnalysis = result.data
+        report_md = self.industry_analyst.render(analysis)
+
+        lark_ok = False
+        if self.lark:
+            lark_ok = await self.lark.send_markdown(
+                title=f"行业产业链分析 — {analysis.industry}",
+                content=report_md,
+            )
+            if not lark_ok:
+                logger.warning("Lark push failed, industry report saved locally")
+
+        self._save_industry_local(report_md, analysis.industry)
+
+        stock_count = sum(len(node.stocks) for node in analysis.nodes)
+        return IndustryAnalysisResult(
+            industry=analysis.industry,
+            report_md=report_md,
+            sentiment_score=analysis.sentiment_score,
+            node_count=len(analysis.nodes),
+            stock_count=stock_count,
+            lark_ok=lark_ok,
+        )
+
+    def _save_industry_local(self, report_md: str, industry: str) -> None:
+        from datetime import datetime
+        from pathlib import Path
+
+        out_dir = Path("reports")
+        out_dir.mkdir(exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe = industry.replace("/", "_").replace("\\", "_")
+        filename = out_dir / f"industry_{safe}_{ts}.md"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        logger.info("Industry report saved to %s", filename)
+
+    async def run_market(self, code: str) -> MarketAnalysisResult:
+        """F3 大盘指数技术面分析 (11 策略)."""
+        logger.info("=== Starting market index analysis for %s ===", code)
+        try:
+            stock_data = await self.data_fetcher.fetch_index(code)
+        except Exception as exc:
+            raise RuntimeError(f"Index fetch failed: {exc}") from exc
+
+        return await self._run_market_common(stock_data, kind="index")
+
+    async def run_etf(self, code: str) -> MarketAnalysisResult:
+        """F4 ETF 技术面分析 (11 策略)."""
+        logger.info("=== Starting ETF analysis for %s ===", code)
+        try:
+            stock_data = await self.data_fetcher.fetch_etf(code)
+        except Exception as exc:
+            raise RuntimeError(f"ETF fetch failed: {exc}") from exc
+
+        return await self._run_market_common(stock_data, kind="etf")
+
+    async def _run_market_common(
+        self, stock_data: StockData, kind: str
+    ) -> MarketAnalysisResult:
+        result = await self.market_analyst.analyze(stock_data)
+        if not result.success or result.data is None:
+            raise RuntimeError(f"Market analysis failed: {result.error}")
+
+        payload = result.data
+        report_md = self.market_analyst.render(payload, kind=kind)
+
+        title_prefix = "大盘指数" if kind == "index" else "ETF"
+        lark_ok = False
+        if self.lark:
+            lark_ok = await self.lark.send_markdown(
+                title=f"{title_prefix}技术分析 — {stock_data.name} ({stock_data.symbol})",
+                content=report_md,
+            )
+            if not lark_ok:
+                logger.warning("Lark push failed, %s report saved locally", kind)
+
+        self._save_market_local(report_md, kind, stock_data.symbol)
+
+        return MarketAnalysisResult(
+            symbol=stock_data.symbol,
+            name=stock_data.name,
+            kind=kind,
+            report_md=report_md,
+            tech_score=payload["score"],
+            recommendation=payload["recommendation"].value,
+            indicator_count=len(payload["tech"].indicators),
+            lark_ok=lark_ok,
+        )
+
+    def _save_market_local(self, report_md: str, kind: str, code: str) -> None:
+        from datetime import datetime
+        from pathlib import Path
+
+        out_dir = Path("reports")
+        out_dir.mkdir(exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        prefix = "market_tech" if kind == "index" else "etf_tech"
+        filename = out_dir / f"{prefix}_{code}_{ts}.md"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        logger.info("%s report saved to %s", kind, filename)

@@ -23,6 +23,12 @@ class Signal(str, Enum):
     BULLISH = "bullish"
     BEARISH = "bearish"
     DATA_INSUFFICIENT = "data_insufficient"
+    VOLUME_SURGE = "volume_surge"
+    VOLUME_SHRINK = "volume_shrink"
+    HIGH_VOLATILITY = "high_volatility"
+    LOW_VOLATILITY = "low_volatility"
+    TREND_STRONG = "trend_strong"
+    TREND_WEAK = "trend_weak"
 
 
 class Recommendation(str, Enum):
@@ -122,3 +128,30 @@ class BranchResult:
     data: Any | None = None
     error: str = ""
     skipped: bool = False
+
+
+@dataclass(frozen=True)
+class IndustryStock:
+    symbol: str
+    name: str
+    pct_change: float = 0.0
+    market_cap: float = 0.0
+
+
+@dataclass
+class IndustryNode:
+    tier: str
+    label: str
+    stocks: list[IndustryStock] = field(default_factory=list)
+    avg_pct_change: float = 0.0
+    note: str = ""
+
+
+@dataclass
+class IndustryAnalysis:
+    industry: str
+    description: str = ""
+    nodes: list[IndustryNode] = field(default_factory=list)
+    sentiment_score: int = 50
+    risk_notes: list[str] = field(default_factory=list)
+    generated_at: str = ""

@@ -1,0 +1,145 @@
+# 行业产业链定义 — F1 IndustryAnalyst 使用
+#
+# 规则:
+#   每个行业包含 description / risk_notes 与三层节点 (upstream / midstream / downstream)
+#   每个节点的 stocks 列表里, symbol 必须用引号包裹避免 YAML 把 "002475" 解析成 int 2475
+
+光伏:
+  description: "光伏产业链覆盖太阳能发电从原材料到电站建设的完整链条, 是新能源板块核心赛道之一."
+  upstream:
+    label: "上游 - 硅料 / 硅片 / 设备"
+    stocks:
+      - { symbol: "600438", name: "通威股份" }
+      - { symbol: "688303", name: "大全能源" }
+      - { symbol: "002129", name: "TCL中环" }
+      - { symbol: "300316", name: "晶盛机电" }
+  midstream:
+    label: "中游 - 电池 / 组件"
+    stocks:
+      - { symbol: "601012", name: "隆基绿能" }
+      - { symbol: "002459", name: "晶澳科技" }
+      - { symbol: "688223", name: "晶科能源" }
+      - { symbol: "688599", name: "天合光能" }
+  downstream:
+    label: "下游 - 逆变器 / 电站 / EPC"
+    stocks:
+      - { symbol: "300274", name: "阳光电源" }
+      - { symbol: "688390", name: "固德威" }
+      - { symbol: "300763", name: "锦浪科技" }
+      - { symbol: "300827", name: "上能电气" }
+  risk_notes:
+    - "硅料价格周期波动可能压缩中游毛利"
+    - "海外贸易政策与 IRA 法案影响出口"
+    - "组件产能扩张过快导致价格内卷"
+
+新能源汽车:
+  description: "新能源汽车产业链涵盖锂矿原料 / 三电系统 / 整车组装与销售三大环节, 是 A 股长期成长主线."
+  upstream:
+    label: "上游 - 锂矿 / 正极材料"
+    stocks:
+      - { symbol: "002460", name: "赣锋锂业" }
+      - { symbol: "002466", name: "天齐锂业" }
+      - { symbol: "603799", name: "华友钴业" }
+      - { symbol: "300073", name: "当升科技" }
+  midstream:
+    label: "中游 - 电池 / 电机 / 电控"
+    stocks:
+      - { symbol: "300750", name: "宁德时代" }
+      - { symbol: "300014", name: "亿纬锂能" }
+      - { symbol: "002074", name: "国轩高科" }
+      - { symbol: "300207", name: "欣旺达" }
+  downstream:
+    label: "下游 - 整车制造"
+    stocks:
+      - { symbol: "002594", name: "比亚迪" }
+      - { symbol: "601633", name: "长城汽车" }
+      - { symbol: "000625", name: "长安汽车" }
+      - { symbol: "600104", name: "上汽集团" }
+  risk_notes:
+    - "碳酸锂价格波动直接影响上游利润"
+    - "终端补贴退坡与价格战"
+    - "海外建厂与关税合规成本"
+
+半导体:
+  description: "半导体产业链由设备材料 / 设计 / 制造封测组成, 受国产替代与 AI 算力需求双轮驱动."
+  upstream:
+    label: "上游 - 设备 / 材料"
+    stocks:
+      - { symbol: "002371", name: "北方华创" }
+      - { symbol: "688012", name: "中微公司" }
+      - { symbol: "688126", name: "沪硅产业" }
+      - { symbol: "002409", name: "雅克科技" }
+  midstream:
+    label: "中游 - 芯片设计"
+    stocks:
+      - { symbol: "603986", name: "兆易创新" }
+      - { symbol: "002049", name: "紫光国微" }
+      - { symbol: "603501", name: "韦尔股份" }
+      - { symbol: "300782", name: "卓胜微" }
+  downstream:
+    label: "下游 - 制造 / 封测"
+    stocks:
+      - { symbol: "688981", name: "中芯国际" }
+      - { symbol: "600584", name: "长电科技" }
+      - { symbol: "002156", name: "通富微电" }
+      - { symbol: "002185", name: "华天科技" }
+  risk_notes:
+    - "美国出口管制升级风险"
+    - "全球半导体周期下行可能延长"
+    - "成熟制程产能过剩压力"
+
+锂电池:
+  description: "锂电池产业链与新能源汽车强相关, 但储能 / 消费电子等新场景拓宽下游需求."
+  upstream:
+    label: "上游 - 锂矿 / 正负极 / 电解液"
+    stocks:
+      - { symbol: "002460", name: "赣锋锂业" }
+      - { symbol: "002466", name: "天齐锂业" }
+      - { symbol: "688005", name: "容百科技" }
+      - { symbol: "002709", name: "天赐材料" }
+  midstream:
+    label: "中游 - 电芯 / 模组 / PACK"
+    stocks:
+      - { symbol: "300750", name: "宁德时代" }
+      - { symbol: "300014", name: "亿纬锂能" }
+      - { symbol: "002074", name: "国轩高科" }
+      - { symbol: "688567", name: "孚能科技" }
+  downstream:
+    label: "下游 - 储能 / 应用"
+    stocks:
+      - { symbol: "300274", name: "阳光电源" }
+      - { symbol: "688063", name: "派能科技" }
+      - { symbol: "002074", name: "国轩高科" }
+      - { symbol: "300207", name: "欣旺达" }
+  risk_notes:
+    - "锂资源价格中枢回落对上游冲击"
+    - "中游产能扩张过快"
+    - "储能项目并网政策不确定"
+
+消费电子:
+  description: "消费电子产业链覆盖屏幕芯片 / ODM 组装 / 品牌渠道, 是手机笔电可穿戴的核心载体."
+  upstream:
+    label: "上游 - 屏幕 / 元器件"
+    stocks:
+      - { symbol: "000725", name: "京东方A" }
+      - { symbol: "000100", name: "TCL科技" }
+      - { symbol: "002475", name: "立讯精密" }
+      - { symbol: "002241", name: "歌尔股份" }
+  midstream:
+    label: "中游 - ODM / EMS"
+    stocks:
+      - { symbol: "002475", name: "立讯精密" }
+      - { symbol: "600745", name: "闻泰科技" }
+      - { symbol: "002938", name: "鹏鼎控股" }
+      - { symbol: "002138", name: "顺络电子" }
+  downstream:
+    label: "下游 - 品牌 / 整机"
+    stocks:
+      - { symbol: "688036", name: "传音控股" }
+      - { symbol: "002351", name: "漫步者" }
+      - { symbol: "002916", name: "深南电路" }
+      - { symbol: "300433", name: "蓝思科技" }
+  risk_notes:
+    - "全球智能手机出货量周期性下行"
+    - "消费降级影响中端机换机意愿"
+    - "海外品牌客户订单集中度高"

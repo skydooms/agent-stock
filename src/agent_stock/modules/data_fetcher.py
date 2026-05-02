@@ -29,6 +29,20 @@ COLUMN_MAP = {
 }
 
 
+# 常见大盘指数中文名 (F3 用)
+INDEX_NAME_MAP = {
+    "000001": "上证指数",
+    "000300": "沪深300",
+    "000905": "中证500",
+    "000852": "中证1000",
+    "000016": "上证50",
+    "399001": "深证成指",
+    "399006": "创业板指",
+    "399005": "中小板指",
+    "899050": "北证50",
+}
+
+
 class DataFetcher:
     """AKShare 数据获取与缓存封装."""
 
@@ -91,6 +105,115 @@ class DataFetcher:
 
         await self.cache.set(cache_key, self._serialize(stock_data), self.cache_ttl)
         return stock_data
+
+    async def fetch_index(self, code: str) -> StockData:
+        """F3 大盘指数日线数据 (代码如 000001 / 399001 / 399006)."""
+        cache_key = f"index:{code}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            logger.info("Cache hit for index %s", code)
+            return self._deserialize(cached)
+
+        logger.info("Fetching index K-line for %s from AKShare", code)
+        try:
+            df = ak.index_zh_a_hist(
+                symbol=code,
+                period="daily",
+                start_date=(datetime.now() - timedelta(days=self.kline_days)).strftime("%Y%m%d"),
+                end_date=datetime.now().strftime("%Y%m%d"),
+            )
+        except Exception as exc:
+            logger.error("AKShare index fetch failed for %s: %s", code, exc)
+            raise DataFetchError(f"AKShare index error: {exc}") from exc
+
+        if df is None or df.empty:
+            raise DataFetchError(f"No index data returned for {code}")
+
+        df = self._normalize_columns(df)
+        klines = self._df_to_klines(df, allow_missing_volume=True)
+        if not klines:
+            raise DataFetchError(f"Index {code} 无可用 K 线")
+
+        name = INDEX_NAME_MAP.get(code, f"指数{code}")
+        period = f"{klines[0].date}~{klines[-1].date}"
+        data = StockData(symbol=code, name=name, period=period, klines=klines)
+        await self.cache.set(cache_key, self._serialize(data), self.cache_ttl)
+        return data
+
+    async def fetch_etf(self, code: str) -> StockData:
+        """F4 ETF 日线数据 (代码如 510300 / 510500 / 159915)."""
+        cache_key = f"etf:{code}"
+        cached = await self.cache.get(cache_key)
+        if cached is not None:
+            logger.info("Cache hit for ETF %s", code)
+            return self._deserialize(cached)
+
+        logger.info("Fetching ETF K-line for %s from AKShare", code)
+        try:
+            df = ak.fund_etf_hist_em(
+                symbol=code,
+                period="daily",
+                start_date=(datetime.now() - timedelta(days=self.kline_days)).strftime("%Y%m%d"),
+                end_date=datetime.now().strftime("%Y%m%d"),
+                adjust="qfq",
+            )
+        except Exception as exc:
+            logger.error("AKShare ETF fetch failed for %s: %s", code, exc)
+            raise DataFetchError(f"AKShare ETF error: {exc}") from exc
+
+        if df is None or df.empty:
+            raise DataFetchError(f"No ETF data returned for {code}")
+
+        df = self._normalize_columns(df)
+        klines = self._df_to_klines(df, allow_missing_volume=False)
+        if not klines:
+            raise DataFetchError(f"ETF {code} 无可用 K 线")
+
+        name = self._fetch_etf_name(code)
+        period = f"{klines[0].date}~{klines[-1].date}"
+        data = StockData(symbol=code, name=name, period=period, klines=klines)
+        await self.cache.set(cache_key, self._serialize(data), self.cache_ttl)
+        return data
+
+    @staticmethod
+    def _df_to_klines(df, allow_missing_volume: bool = False) -> list[KLine]:
+        required = {"date", "open", "high", "low", "close"}
+        missing = required - set(df.columns)
+        if missing:
+            raise DataFetchError(f"Missing columns: {missing}")
+        if "volume" not in df.columns:
+            if not allow_missing_volume:
+                raise DataFetchError("Missing volume column")
+            df = df.copy()
+            df["volume"] = 0
+        klines: list[KLine] = []
+        for _, row in df.iterrows():
+            try:
+                klines.append(
+                    KLine(
+                        date=str(row["date"]),
+                        open=float(row["open"]),
+                        high=float(row["high"]),
+                        low=float(row["low"]),
+                        close=float(row["close"]),
+                        volume=int(row["volume"] or 0),
+                    )
+                )
+            except (TypeError, ValueError):
+                continue
+        return klines
+
+    def _fetch_etf_name(self, code: str) -> str:
+        try:
+            df = ak.fund_etf_spot_em()
+            if df is None or df.empty:
+                return f"ETF{code}"
+            for _, row in df.iterrows():
+                if str(row.get("代码", "")).strip() == code:
+                    return str(row.get("名称", f"ETF{code}"))
+        except Exception as exc:
+            logger.warning("Failed to fetch ETF name for %s: %s", code, exc)
+        return f"ETF{code}"
 
     def _normalize_columns(self, df):
         rename = {}
