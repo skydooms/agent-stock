@@ -50,6 +50,14 @@ def get_ngrok_url(timeout: int = 30) -> str | None:
 
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
     ngrok_cmd = find_ngrok()
     if not ngrok_cmd:
         print("错误：未找到 ngrok。请先安装：https://ngrok.com/download")
